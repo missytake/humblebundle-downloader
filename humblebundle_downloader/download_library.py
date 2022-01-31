@@ -282,9 +282,10 @@ class DownloadLibrary:
                     try:
                         url = file_type['url'][content_type]
                     except KeyError:
-                        logger.info("No url found: {bundle_title}/{product_title}"
-                                    .format(bundle_title=bundle_title,
-                                            product_title=product_title))
+                        if file_type.get("human_size") != "0 bytes":
+                            logger.info("No url found: {bundle_title}/{product_title}"
+                                        .format(bundle_title=bundle_title,
+                                                product_title=product_title))
                         continue
 
                     url_filename = url.split('?')[0].split('/')[-1]
