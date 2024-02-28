@@ -58,6 +58,12 @@ def parse_args(args):
         "Ex: --content-types web bittorrent ",
     )
     parser.add_argument(
+        '-d', '--no-duplicates',
+        action='store_true',
+        help="If a file with the same name already exists anywhere in the library dir (including subfolders), do not re-download it."
+        "Instead, create a text file called '<filename>.found' and write the path to the existing file inside it for reference.",
+    )
+    parser.add_argument(
         '--progress',
         action='store_true',
         help="Display progress bar for downloads",
@@ -99,5 +105,6 @@ def cli():
         purchase_keys=cli_args.keys,
         trove=cli_args.trove,
         update=cli_args.update,
-        content_types=cli_args.content_types
+        content_types=cli_args.content_types,
+        no_duplicates=cli_args.no_duplicates
     ).start()

@@ -47,7 +47,7 @@ class DownloadLibrary:
     def __init__(self, library_path, cookie_path=None, cookie_auth=None,
                  progress_bar=False, ext_include=None, ext_exclude=None,
                  platform_include=None, purchase_keys=None, trove=False,
-                 update=False, content_types=None):
+                 update=False, content_types=None, no_duplicates=False):
         self.library_path = library_path
         self.progress_bar = progress_bar
         self.ext_include = [] if ext_include is None else list(map(str.lower, ext_include))  # noqa: E501
@@ -62,6 +62,9 @@ class DownloadLibrary:
         self.trove = trove
         self.update = update
         self.content_types = ['web'] if content_types is None else list(map(str.lower, content_types))  # noqa: E501
+        self.no_duplicates = no_duplicates
+        if no_duplicates:
+            print("Will NOT download duplicate filenames")
 
         retries = Retry(total=3, backoff_factor=1,
                         status_forcelist=[429, 500, 502, 503, 504])
@@ -256,7 +259,7 @@ class DownloadLibrary:
             os.rename(local_filename, new_name)
             logger.info("Renamed older file to {new_name}"
                         .format(new_name=new_name))
-
+    
     def _process_product(self, order_id, bundle_title, product):
         product_title = _clean_name(product['human_name'])
         # Get all types of download for a product
@@ -302,6 +305,18 @@ class DownloadLibrary:
                     if cache_file_info != {} and self.update is not True:
                         # Do not care about checking for updates at this time
                         continue
+                    
+                    if self.no_duplicates:
+                        #Comparing the hash would be better, but this filename check is simple and mostly works
+                        existing_file = self._file_exists(url_filename)
+                        if existing_file:
+                            #Do not re-download files that already exist somewhere in the library folder structure
+                            #Instead, write a text file pointing to that file.
+                            message = f"File already downloaded at {existing_file}"
+                            print(message)
+                            with open(local_filename + ".found", 'w') as outfile:
+                                outfile.write(message)
+                            continue
 
                     try:
                         product_r = self.session.get(url, stream=True)
@@ -338,6 +353,18 @@ class DownloadLibrary:
                             local_filename,
                             rename_str=last_modified,
                         )
+    
+    def _file_exists(self, name):
+        filenames = []
+        filepaths = []
+        for (dirpath, dirs, files) in os.walk(self.library_path):
+            filepaths.extend([os.path.join(dirpath, f) for f in files])
+            filenames.extend(files)
+        
+        for i, f in enumerate(filenames):
+            if f == name:
+                return filepaths[i]
+        return False
 
     def _update_cache_data(self, cache_file_key, file_info):
         self.cache_data[cache_file_key] = file_info
