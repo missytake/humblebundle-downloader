@@ -32,14 +32,6 @@ def _strtonone(val):
     else:
         raise ValueError("value was none 'None' %r" % (val,))
 
-class CacheDataJson:
-    key: str
-    value: dict
-
-    def __init__(self, key: str, value: dict):
-        self.key = key
-        self.value = value
-
 
 class CsvCacheData:
 

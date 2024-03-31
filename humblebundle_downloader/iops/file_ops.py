@@ -6,6 +6,7 @@ from data.cache import CSV_CACHE, CsvCacheData, Cache
 logger = logging.getLogger(__name__)
 
 _HUMBLE_ENV_VAR = "HUMBLE_LIBRARY_PATH"
+
 def rename_old_file(local_filepath, append_str):
     # Check if older file exists, if so rename
     if os.path.isfile(local_filepath) is True:
@@ -55,7 +56,7 @@ def update_csv_cache(queue: multiprocessing.JoinableQueue):
                 cache_data: CsvCacheData = queue.get(True, 15.0)
             except:
                 pass
-            if "kill" == cache_data.key:
+            if "kill" == cache_data['order_id']:
                 queue.task_done()
                 break
 
