@@ -87,7 +87,7 @@ def parse_args(args):
 def cli():
     cli_args = parse_args(sys.argv[1:])
 
-    from .download_library import DownloadLibrary
+    from download_library import DownloadLibrary
     DownloadLibrary(
         cli_args.library_path,
         cookie_path=cli_args.cookie_file,
@@ -101,3 +101,7 @@ def cli():
         update=cli_args.update,
         content_types=cli_args.content_types
     ).start()
+
+
+if __name__ == "__main__":
+    cli()
