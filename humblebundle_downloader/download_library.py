@@ -181,8 +181,8 @@ class DownloadLibrary:
             file_info = {
                 'uploaded_at': (download.get('uploaded_at')
                                 or download.get('timestamp')
-                                or product.get('date_added', 'N/A')),
-                'md5': download.get('md5', 'N/A'),
+                                or product.get('date_added', 0)),
+                'md5': download.get('md5', 'UNKNOWN_MD5'),
             }
 
             cache_file_info: CsvCacheData = self.cache_data_csv.get_cache_item("trove", web_name, trove=True,)
