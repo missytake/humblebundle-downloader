@@ -67,7 +67,6 @@ class DownloadLibrary:
 
         self.cache_data_csv: Cache = file_ops.load_cache_csv()
 
-        # todo: investigate how platform_include works
         if platform_include is None or 'all' in platform_include:
             # if 'all', then do not need to use this check
             platform_include = []  # why not make the d
