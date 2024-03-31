@@ -181,7 +181,7 @@ class DownloadLibrary:
             file_info = {
                 'uploaded_at': (download.get('uploaded_at')
                                 or download.get('timestamp')
-                                or product.get('date_added', 0)),
+                                or product.get('date_added', '0')),
                 'md5': download.get('md5', 'UNKNOWN_MD5'),
             }
 
