@@ -310,7 +310,7 @@ class DownloadLibrary:
                     if cache_file_info in self.cache_data_csv and self.update is False:
                         # We have the file, and don't want to update.
                         continue
-                    cache_file_info.set_md5(file_type['md5'])
+                    cache_file_info.set_md5(file_type.get("md5"))
 
                     try:
                         product_r = self.session.get(url, stream=True)
