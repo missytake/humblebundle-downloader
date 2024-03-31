@@ -15,7 +15,7 @@ from data.cache import CsvCacheData, Cache
 from iops import file_ops
 
 from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
+from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,8 @@ DEFAULT_TIMEOUT = 5  # seconds
 
 
 class TimeoutHTTPAdapter(HTTPAdapter):
+    timeout = DEFAULT_TIMEOUT
+
     def __init__(self, *args, **kwargs):
         self.timeout = DEFAULT_TIMEOUT
         if "timeout" in kwargs:
@@ -251,8 +253,7 @@ class DownloadLibrary:
         return trove_products
 
     def _process_order_id(self, order_id, multiprocess_queue: multiprocessing.JoinableQueue):
-        order_url = 'https://www.humblebundle.com/api/v1/order/{order_id}?all_tpkds=true'.format(
-            order_id=order_id)  # noqa: E501
+        order_url = 'https://www.humblebundle.com/api/v1/order/{order_id}?all_tpkds=true'.format(order_id=order_id)
         try:
             order_r = self.session.get(
                 order_url,
@@ -261,7 +262,7 @@ class DownloadLibrary:
                     'content-encoding': 'gzip',
                 },
             )
-        except Exception:
+        except Exception as e:
             logger.error("Failed to get order key {order_id}"
                          .format(order_id=order_id))
             return
@@ -320,61 +321,27 @@ class DownloadLibrary:
 
                     # Check to see if the file still exists
                     if product_r.status_code != 200:
-                        logger.debug(
-                            "File missing for {bundle_title}/{product_title}: {url}"
-                            .format(bundle_title=bundle_title,
-                                    product_title=product_title,
-                                    url=url))
+                        logger.debug(f"File missing for {bundle_title}/{product_title}: {url}")
                         continue
-                # Check to see if the file still exists
-                if product_r.status_code != 200:
-                    logger.debug(f"File missing for {bundle_title}/{product_title}: {url}")
-                    continue
 
-                    logger.debug("Item request: {product_r}, Url: {url}"
-                                .format(product_r=product_r, url=url))
-                    file_info = {
-                        'url_last_modified': product_r.headers['Last-Modified'],
-                    }
-                    if file_info['url_last_modified'] != cache_file_info.get('url_last_modified'):  # noqa: E501
-                        if 'url_last_modified' in cache_file_info:
+                    logger.debug(f"Item request: {product_r}, Url: {url}")
+
+                    if product_r.headers['Last-Modified'] != cache_file_info['remote_modified_date']:  # noqa: E501
+                        if 'remote_modified_date' in cache_file_info:
                             last_modified = datetime.datetime.strptime(
-                                cache_file_info['url_last_modified'],
+                                cache_file_info['remote_modified_date'],
                                 '%a, %d %b %Y %H:%M:%S %Z'
                             ).strftime('%Y-%m-%d')
                         else:
                             last_modified = None
+                        cache_file_info.set_remote_modified_date(product_r.headers['Last-Modified'])
                         self._process_download(
                             product_r,
-                            cache_file_key,
-                            file_info,
+                            cache_file_info,
                             local_filename,
-                            rename_str=last_modified,
+                            rename_date_str=last_modified,
                             multiprocess_queue=multiprocess_queue
                         )
-
-    def _update_cache_data(self, cache_file_key, file_info):
-        self.cache_data[cache_file_key] = file_info
-        # Update cache file with newest data so if the script
-        # quits it can keep track of the progress
-        # Note: Only safe because of single thread,
-        # need to change if refactor to multi threading
-        with open(self.cache_file, 'w') as outfile:
-            logger.debug("Item request: {product_r}, Url: {url}"
-                         .format(product_r=product_r, url=url))
-
-            if product_r.headers['Last-Modified'] != cache_file_info['remote_modified_date']:  # noqa: E501
-                if 'remote_modified_date' in cache_file_info:
-                    last_modified = datetime.datetime.strptime(
-                        cache_file_info['remote_modified_date'],
-                        '%a, %d %b %Y %H:%M:%S %Z'
-                    ).strftime('%Y-%m-%d')
-                else:
-                    last_modified = None
-                # only download file if remote file last modified is same as cache remote last modified
-                cache_file_info.set_remote_modified_date(product_r.headers['Last-Modified'])
-                self._process_download(product_r, cache_file_info, local_filename, rename_date_str=last_modified,
-                                           multiprocess_queue=multiprocess_queue)
 
     def _process_download(self, open_r, cache_data: CsvCacheData, local_filename, rename_date_str=None,
                           multiprocess_queue=None):
@@ -412,40 +379,6 @@ class DownloadLibrary:
         finally:
             # Since it's a stream connection, make sure to close it
             open_r.connection.close()
-
-
-    def _download_file(self, product_r, local_filename):
-        # logger.info()
-
-        with open(local_filename, 'wb') as outfile:
-            total_length = product_r.headers.get('content-length')
-            if total_length is None:  # no content length header
-                outfile.write(product_r.content)
-            else:
-                dl = 0
-                total_length = int(total_length)
-                for data in product_r.iter_content(chunk_size=4096):
-                    dl += len(data)
-                    outfile.write(data)
-                    pb_width = 50
-                    done = int(pb_width * dl / total_length)
-                    if self.progress_bar:
-                        print("\t{percent:3d}% [{filler}{space}]"
-                              .format(percent=done * 100 // pb_width,
-                                      filler='=' * done,
-                                      space=' ' * (pb_width - done),
-                                      ), end='\r')
-                if dl != total_length:
-                    raise ValueError("Download did not complete")
-
-    def _load_cache_data(self, cache_file):
-        try:
-            with open(cache_file, 'r') as f:
-                cache_data = json.load(f)
-        except FileNotFoundError:
-            cache_data = {}
-
-        return cache_data
 
     def _get_purchase_keys(self):
         try:

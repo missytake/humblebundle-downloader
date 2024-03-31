@@ -4,3 +4,4 @@ __pycache__
 .tox/
 build/
 dist/
+.idea
